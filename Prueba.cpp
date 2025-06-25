@@ -7,7 +7,7 @@ int main(){
     PruebaTexto.push_back('%');
     PruebaTexto += " of it.";
     Decoder prueba_d;
-    string PruebaTexto2 = "GPT2 was created by OpenAI";
+    string PruebaTexto2 = "GPT2 was created by OpenAI transformers.";
     prueba_d.Tokenizacion(&PruebaTexto2);
     /*
     ifstream a("vocabulary/vocab.json");

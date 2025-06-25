@@ -99,7 +99,7 @@ void Decoder::Tokenizacion(std::string *texto){
     std::cout<<"-------------------------------------------------------"<<std::endl;
     BytePairEncoding(palabras);
     for (int i = 0; i < palabras.size();  i++){
-        tokens[i] = tokenizador[palabras[i]];
+        tokens.push_back(tokenizador[palabras[i]]);
         std::cout<<tokens[i]<<" -- "<<palabras[i]<<std::endl;
     }
 }
