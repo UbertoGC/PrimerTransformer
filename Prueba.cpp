@@ -7,9 +7,8 @@ int main(){
     PruebaTexto.push_back('%');
     PruebaTexto += " of it.";
     
-    string PruebaTexto2 = "GPT2 was created by OpenAI";
-    std::cout<<"HOLA"<<std::endl;
-    Decoder prueba_d;
-    prueba_d.Ejecutar(PruebaTexto2);
+    string PruebaTexto2 = "GPT2 was created by OpenAI and I am using it";
+    Decoder GPT1;
+    GPT1.Ejecutar(PruebaTexto2);
     return 0;
 }

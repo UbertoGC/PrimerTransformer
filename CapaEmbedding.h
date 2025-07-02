@@ -8,37 +8,25 @@
 class CapaEmbedding
 {
 private:
-    Matriz2D token_embedding;
     Matriz2D posicion_embedding;
     Matriz2D* embedding_matriz;
-    int vocabulario_size;
     int d_modelo;
 public:
     CapaEmbedding(int, int);
-    void Forward(std::vector<int>&, Matriz2D&);
+    void Forward(Matriz2D&, Matriz2D&);
     ~CapaEmbedding();
 };
-CapaEmbedding::CapaEmbedding(int vocab_size, int d_model){
-    vocabulario_size = vocab_size;
-    d_modelo = d_model;
+CapaEmbedding::CapaEmbedding(int max_entrada, int d_m){
     embedding_matriz = nullptr;
-    posicion_embedding.ReSize(512, d_modelo);
+    d_modelo = d_m;
+    posicion_embedding.ReSize(max_entrada, d_modelo);
     posicion_embedding.Random();
-    std::cout<<"Posicion Embedding size: ["<<posicion_embedding.fil()<<" x "<<posicion_embedding.col()<<"]"<<std::endl;
-    token_embedding.ReSize(vocabulario_size, d_modelo);
-    token_embedding.Random();
-    std::cout<<"Token Embedding size: ["<<token_embedding.fil()<<" x "<<token_embedding.col()<<"]"<<std::endl;
     std::cout<<"Capa de Embedding creada"<<std::endl;
 }
-void CapaEmbedding::Forward(std::vector<int>& entrada, Matriz2D& salida){
-    salida.ReSize(entrada.size(), d_modelo);
-    for (int i = 0; i < entrada.size(); i++){
-        if (entrada[i] >= 0 && entrada[i] < token_embedding.fil()) {
-            salida[i] << token_embedding[entrada[i]];
-            salida[i] += posicion_embedding[i];
-        } else {
-            std::cout<<"Token ID Invalido: " << std::to_string(entrada[i])<<std::endl;
-        }
+void CapaEmbedding::Forward(Matriz2D& entrada, Matriz2D& salida){
+    salida.ReSize(entrada.fil(), d_modelo);
+    for (int i = 0; i < entrada.fil(); i++){
+        salida[i] += posicion_embedding[i];
     }
     if(embedding_matriz != &salida){
         embedding_matriz = &salida;

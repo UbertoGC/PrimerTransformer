@@ -13,6 +13,7 @@ public:
     Vector2D(int);
     void Random();
     int lar();
+    void ReSize(int);
     double& operator[](int);
     Vector2D& operator<<(const Vector2D&);
     Vector2D& operator+=(const Vector2D&);
@@ -29,12 +30,23 @@ Vector2D::Vector2D(int x){
         v[i] = 0;
     }
 }
+void Vector2D::ReSize(int x){
+    if (x != largo) {
+        delete[] v;
+        largo = x;
+        v = new double[largo];
+    }
+    #pragma omp parallel for schedule(dynamic)
+    for (int i = 0; i < largo; ++i) {
+        v[i] = 0;
+    }
+}
 void Vector2D::Random(){
     v = new double[largo];
     for (int i = 0; i < largo; ++i) {
-        std::mt19937 gen(i * 10);
-        std::uniform_real_distribution<double> dist(0.5, 2.5);
-        v[i] = dist(gen);
+        std::minstd_rand gen(i * 10);
+        std::uniform_real_distribution<double> rango(0.5, 2.5);
+        v[i] = rango(gen);
     }
 }
 int Vector2D::lar(){
@@ -87,6 +99,7 @@ public:
     void Random();
     void NormalizarFilas();
     void SoftmaxFilas();
+    void RELU();
     void CopiarMatrizDatos(int, int, const Matriz2D&);
     int fil();
     int col();
@@ -96,6 +109,7 @@ public:
     friend Matriz2D operator*(const Matriz2D&, const Matriz2D&);
     Matriz2D& operator*=(const double&);
     Matriz2D& operator+=(const double&);
+    Matriz2D& operator+=(const Vector2D&);
     Matriz2D& operator+=(const Matriz2D&);
     friend std::ostream& operator<<(std::ostream&, const Matriz2D&);
     ~Matriz2D();
@@ -117,8 +131,8 @@ Matriz2D::Matriz2D(Matriz2D& B){
     }
 }
 Matriz2D::Matriz2D(int x, int y, int t){
+    this->Inicializar(x, y);
     if(t == 0){
-        this->Inicializar(x, y);
         for (int i = 0; i < alto; i++){
             for (int j = 0; j < ancho; j++){
                 if(j <= i){
@@ -130,12 +144,10 @@ Matriz2D::Matriz2D(int x, int y, int t){
             }
         }
     }
-    if(t == 1){
-        this->Inicializar(x, y);
+    else if(t == 1){
         this->Random();
     }
     else{
-        this->Inicializar(x, y);
         this->Zero();
     }
 }
@@ -245,9 +257,9 @@ void Matriz2D::Random(){
         #pragma omp parallel for collapse(2) schedule(dynamic)
         for (int k = i; k < i_sig && k < alto; k++) {
             for (int j = 0; j < ancho; j++){
-                std::minstd_rand rng(k+j);
-                std::uniform_real_distribution<double> dist(0.5, 2.5);
-                m[k][j] = dist(rng);
+                std::minstd_rand gen(k+j);
+                std::uniform_real_distribution<double> rango(0.5, 2.5);
+                m[k][j] = rango(gen);
             }
         }
         i = i_sig;
@@ -257,17 +269,28 @@ void Matriz2D::Random(){
 void Matriz2D::NormalizarFilas(){
     #pragma omp parallel for
     for (int i = 0; i < alto; i++) {
-        double sum = 0.0, var = 0.0;
+        double promedio = 0.0;
+        double varianza = 0.0;
         for (int j = 0; j < ancho; j++) {
-            sum += m[i][j];
+            promedio += m[i][j];
         }
         for (int j = 0; j < ancho; j++) {
-            var += (m[i][j] - sum / ancho) * (m[i][j] - sum / ancho);
+            varianza += (m[i][j] - promedio / ancho) * (m[i][j] - promedio / ancho);
         }
-        if (var != 0) {
+        if (varianza != 0) {
             #pragma omp simd
             for (int j = 0; j < ancho; j++) {
-                m[i][j] = m[i][j] - sum / var;
+                m[i][j] = m[i][j] - promedio / varianza;
+            }
+        }
+    }
+}
+void Matriz2D::RELU() {
+    #pragma omp parallel for collapse(2) schedule(dynamic)
+    for (int i = 0; i < alto; i++) {
+        for (int j = 0; j < ancho; j++) {
+            if (m[i][j] < 0) {
+                m[i][j] = 0;
             }
         }
     }
@@ -275,19 +298,19 @@ void Matriz2D::NormalizarFilas(){
 void Matriz2D::SoftmaxFilas() {
     #pragma omp parallel for
     for (int i = 0; i < alto; i++) {
-        double max_val = m[i][0];
+        double valor_maximo = m[i][0];
         for (int j = 1; j < ancho; j++) {
-            if (m[i][j] > max_val) {
-                max_val = m[i][j];
+            if (m[i][j] > valor_maximo) {
+                valor_maximo = m[i][j];
             }
         }
-        double sum_exp = 0.0;
+        double suma_exponentes = 0.0;
         for (int j = 0; j < ancho; j++) {
-            m[i][j] = exp(m[i][j] - max_val);
-            sum_exp += m[i][j];
+            m[i][j] = exp(m[i][j] - valor_maximo);
+            suma_exponentes += m[i][j];
         }
         for (int j = 0; j < ancho; j++) {
-            m[i][j] /= sum_exp;
+            m[i][j] /= suma_exponentes;
         }
     }
 }
@@ -376,6 +399,19 @@ Matriz2D& Matriz2D::operator+=(const double& valor) {
     }
     return *this;
 }
+Matriz2D& Matriz2D::operator+=(const Vector2D& B) {
+    if (ancho != B.largo) {
+        std::cerr << "Error: La matriz y el vector no son compatibles para la suma." << std::endl;
+        return *this;
+    }
+    #pragma omp parallel for collapse(2) schedule(dynamic)
+    for (int i = 0; i < alto; ++i) {
+        for (int j = 0; j < ancho; ++j) {
+            m[i][j] += B.v[j];
+        }
+    }
+    return *this;
+}
 Matriz2D& Matriz2D::operator+=(const Matriz2D& B) {
     if (alto != B.alto || ancho != B.ancho) {
         std::cerr << "Error: Las matrices no son compatibles para la suma." << std::endl;
@@ -408,5 +444,4 @@ Matriz2D::~Matriz2D() {
         delete[] m[i];
     delete[] m;
 }
-
 #endif
