@@ -7,7 +7,7 @@
 
 class CapaAtencion
 {
-private:
+protected:
     Matriz2D atencion_proyeccion;
     Matriz2D atencion_datosconcat;
     Matriz2D* capa_WQ;
@@ -17,15 +17,17 @@ private:
     int num_cabezas;
     int d_modelo;
     int d_cabeza;
+    int t_mascara;
 public:
-    CapaAtencion(int, int, int);
+    CapaAtencion(int, int, int, int t_m = 0);
     void Forward(Matriz2D&, Matriz2D&);
     ~CapaAtencion();
 };
-CapaAtencion::CapaAtencion(int n_c, int d_m, int d_c) {
+CapaAtencion::CapaAtencion(int n_c, int d_m, int d_c, int t_m) {
     num_cabezas = n_c;
     d_modelo = d_m;
     d_cabeza = d_c;
+    t_mascara = t_m;
 
     capa_WQ = new Matriz2D[num_cabezas];
     capa_WK = new Matriz2D[num_cabezas];
@@ -45,7 +47,7 @@ CapaAtencion::CapaAtencion(int n_c, int d_m, int d_c) {
 }
 void CapaAtencion::Forward(Matriz2D& entrada, Matriz2D& salida) {
     atencion_datosconcat.ReSize(entrada.fil(), d_modelo);
-    Matriz2D mascara(entrada.fil(), entrada.fil(), 0);
+    Matriz2D mascara(entrada.fil(), entrada.fil(), t_mascara);
     for (int c = 0; c < num_cabezas; c++) {
         Matriz2D Q = entrada * capa_WQ[c];
         Matriz2D K = entrada * capa_WK[c];

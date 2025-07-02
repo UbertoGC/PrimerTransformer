@@ -7,79 +7,63 @@
 #include "Matriz2D.h"
 #include "CapaTokenizacion.h"
 #include "CapaEmbedding.h"
-#include "CapaAtencion.h"
+#include "BloqueTransformer.h"
 class Decoder
 {
 private:
-    CapaAtencion* atencion;
     CapaTokenizacion* tokenizador;
     CapaEmbedding* embedding;
+    BloqueTransformer** bloques;
     std::string entrada;
-    std::vector<int> salida_tokenizador;
+    Matriz2D salida_tokenizador;
     Matriz2D salida_embedding;
-    Matriz2D salida_atencion;
-    Matriz2D salida_preMLP;
-    int vocabulario_size;
+    Matriz2D* salida_bloques;
+    int num_bloques;
     int max_secuencia_size;
     int d_modelo;
     int d_cabeza;
+    int d_feedforward;
     int num_cabezas;
 public:
     Decoder();
-    void Ejecutar(std::string &);
-    void PreMLP();
-    void Atencion();
-    void Embedding();
-    void Tokenizacion();
+    void Ejecutar(std::string&);
     ~Decoder();
 };
 Decoder::Decoder(){
+    std::cout<<"Creando Decoder..."<<std::endl;
     num_cabezas = 12;
     d_modelo = 768;
     d_cabeza = d_modelo / num_cabezas;
+    d_feedforward = 3072;
+    num_bloques = 12;
     max_secuencia_size = 512;
-    tokenizador = new CapaTokenizacion();
-    vocabulario_size = tokenizador->VocabSize();
-    embedding = new CapaEmbedding(vocabulario_size, d_modelo);
-    atencion = new CapaAtencion(num_cabezas, d_modelo, d_cabeza);
+    tokenizador = new CapaTokenizacion(d_modelo);
+    embedding = new CapaEmbedding(max_secuencia_size, d_modelo);
+    bloques = new BloqueTransformer*[num_bloques];
+    for (int i = 0; i < num_bloques; i++){
+        std::cout<<i+1<<". ";
+        bloques[i] = new BloqueTransformer();
+    }
+    salida_bloques = new Matriz2D[num_bloques];
 }
-void Decoder::Ejecutar(std::string &texto){
-    if(texto.size()){
-        std::cerr<<"Error: Entrada vacia."<<std::endl;
-        return;
-    }
-    if(texto.size() > max_secuencia_size){
-        std::cerr<<"Error: Entrada excede el maximo de caracteres permitidos."<<std::endl;
-        return;
-    }
+void Decoder::Ejecutar(std::string& texto){
     entrada = texto;
-    this->Tokenizacion();
-    this->Embedding();
-    this->Atencion();
-    this->PreMLP();
-}
-void Decoder::PreMLP(){
-    salida_preMLP = salida_atencion + salida_embedding;
-    salida_preMLP.NormalizarFilas();
-    std::cout<<"PreMLP size: ["<<salida_preMLP.fil()<<" x "<<salida_preMLP.col()<<"]"<<std::endl;
-}
-void Decoder::Atencion(){
-    atencion->Forward(salida_embedding, salida_atencion);
-    std::cout<<"Atencion size: ["<<salida_atencion.fil()<<" x "<<salida_atencion.col()<<"]"<<std::endl;
-}
-void Decoder::Embedding(){
-    embedding->Forward(salida_tokenizador, salida_embedding);
+    this->tokenizador->Forward(entrada, salida_tokenizador);
+    std::cout<<"Tonekizador size: ["<<salida_tokenizador.fil()<<" x "<<salida_tokenizador.col()<<"]"<<std::endl;
+    this->embedding->Forward(salida_tokenizador, salida_embedding);
     std::cout<<"Embedding size: ["<<salida_embedding.fil()<<" x "<<salida_embedding.col()<<"]"<<std::endl;
-}
-void Decoder::Tokenizacion(){
-    tokenizador->Forward(entrada, salida_tokenizador);
-    std::cout<<"Tokens size: "<<salida_tokenizador.size()<<std::endl;
+    this->bloques[0]->Forward(salida_embedding,salida_bloques[0]);
+    std::cout<<"Bloque 1 size: ["<<salida_bloques[0].fil()<<" x "<<salida_bloques[0].col()<<"]"<<std::endl;
+    for (int i = 1; i < num_bloques; i++){
+        this->bloques[i]->Forward(salida_bloques[i-1],salida_bloques[i]);
+        std::cout<<"Bloque "<<i+1<<" size: ["<<salida_bloques[i].fil()<<" x "<<salida_bloques[i].col()<<"]"<<std::endl;
+    }
 }
 Decoder::~Decoder(){
-    delete tokenizador;
     delete embedding;
-    delete atencion;
+    for (int i = 0; i < num_bloques; i++){
+        delete bloques[i];
+    }
+    delete[] bloques;
 }
-
-
 #endif

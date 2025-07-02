@@ -7,26 +7,28 @@
 #include <unordered_map>
 class CapaTokenizacion{
 private:
-    std::vector<int>* tokens;
+    Matriz2D token_embedding;
+    Matriz2D* tokenizacion_matriz;
+    std::vector<int> palabras_token;
     std::unordered_map<std::string, int> tokenizador;
     std::unordered_map<std::string, std::unordered_map<std::string, int>> fusiones;
 public:
-    CapaTokenizacion();
-    void Forward(std::string &, std::vector<int> &);
+    CapaTokenizacion(int);
+    void Forward(std::string &, Matriz2D&);
     void BytePairEncoding(std::vector<std::string> &);
     void Separacion(std::string&, int, std::vector<std::string> &);
     void DividirString(std::string &, std::vector<std::string> &);
     int VocabSize();
     ~CapaTokenizacion();
 };
-CapaTokenizacion::CapaTokenizacion(){
+CapaTokenizacion::CapaTokenizacion(int d_modelo){
     char m = 92;
     char h = char(228);
     std::string wrn = "Ġ";
     std::string limit = "";
     limit.push_back(m);
     limit += "u0120";
-    tokens = nullptr;
+    tokenizacion_matriz = nullptr;
     
     std::ifstream vocabulario("vocabulary/vocab.json");
     std::string l,r;
@@ -68,25 +70,31 @@ CapaTokenizacion::CapaTokenizacion(){
         i++;
     }
     combinaciones.close();
+    token_embedding.ReSize(tokenizador.size(), d_modelo);
+    token_embedding.Random();
+    std::cout<<"Token Embedding size: ["<<token_embedding.fil()<<" x "<<token_embedding.col()<<"]"<<std::endl;
     std::cout<<"Capa de Tokenizacion creada"<<std::endl;
 }
-void CapaTokenizacion::Forward(std::string &entrada, std::vector<int> &salida){
+void CapaTokenizacion::Forward(std::string &entrada, Matriz2D& salida){
     int s = entrada.size() - 1;
     std::vector<std::string> palabras;
     Separacion(entrada, s, palabras);
     BytePairEncoding(palabras);
-    salida.resize(palabras.size());
+    palabras_token.clear();
     #pragma omp parallel for
     for (int i = 0; i < palabras.size();  i++){
-        salida[i] = tokenizador[palabras[i]];
+        palabras_token.push_back(tokenizador[palabras[i]]);
     }
-    for (int i = 0; i < salida.size(); i++){
-        std::cout<<salida[i]<<" --- "<<palabras[i]<<std::endl;
+    salida.ReSize(palabras.size(), token_embedding.col());
+    for (int i = 0; i < palabras_token.size(); i++){
+        if (palabras_token[i] >= 0 && palabras_token[i] < token_embedding.fil()) {
+            salida[i] << token_embedding[palabras_token[i]];
+        } else {
+            std::cout<<"Token ID Invalido: " << palabras_token[i]<<std::endl;
+        }
     }
-    
-    std::cout<<"Tokens size: "<<salida.size()<<std::endl;
-    if(tokens != &salida){
-        tokens = &salida;
+    if(tokenizacion_matriz != &salida){
+        tokenizacion_matriz = &salida;
     }
 }
 void CapaTokenizacion::BytePairEncoding(std::vector<std::string> &palabras){
