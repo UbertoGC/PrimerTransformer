@@ -1,5 +1,6 @@
 #ifndef __CAPATOKENIZACION_H__
 #define __CAPATOKENIZACION_H__
+#include <climits>
 #include <vector>
 #include <iostream>
 #include <string>
