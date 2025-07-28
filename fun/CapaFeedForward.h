@@ -38,10 +38,17 @@ void CapaFeedForward::Forward(Matriz2D& entrada, Matriz2D& salida, bool usarCUDA
     }
 
     // Primera proyección: entrada * W1
-    Matriz2D salida_ff = entrada.MultiplicarCUDA(pesos1);
+    // Primera proyección
+    Matriz2D salida_ff = usarCUDA ? entrada.MultiplicarCUDA(pesos1)
+                                : entrada.MultiplicarCPU(pesos1);
+
 
     // Sumar bias1 (broadcast)
-    salida_ff.SumarFila(bias1);
+    if (usarCUDA)
+        salida_ff.SumarFilaCUDA(bias1);
+    else
+        salida_ff.SumarFila(bias1);
+
 
     // Activación
     if (usarCUDA)
@@ -50,12 +57,17 @@ void CapaFeedForward::Forward(Matriz2D& entrada, Matriz2D& salida, bool usarCUDA
         salida_ff.RELU();
 
     // Segunda proyección: salida_ff * W2
-    salida = salida_ff.MultiplicarCUDA(pesos2);
+    // Segunda proyección
+    salida = usarCUDA ? salida_ff.MultiplicarCUDA(pesos2)
+                    : salida_ff.MultiplicarCPU(pesos2);
 
     // Sumar bias2 (broadcast)
-    salida.SumarFila(bias2);
-
-    // Activación final
+    if (usarCUDA)
+        salida.SumarFilaCUDA(bias2);
+    else
+        salida.SumarFila(bias2);
+   
+    // Activación final (nova de acuerdo alestandard Transformer)
     if (usarCUDA)
         salida.RELU_CUDA();
     else
