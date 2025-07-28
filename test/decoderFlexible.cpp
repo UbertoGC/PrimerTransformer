@@ -27,7 +27,7 @@ void benchmarkEjecucion(DecoderFlexible& decoder,  std::string& texto, bool usar
 }
 
 int main() {
-    // Configuración
+    // Configuración inicial
     const int num_pruebas = 3;
     std::string textos[num_pruebas] = {
         "Transformers son modelos poderosos",
