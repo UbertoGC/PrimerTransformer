@@ -95,7 +95,18 @@ public:
         datos = new float[f * c];
         memset(datos, 0, f * c * sizeof(float));
     }
-    
+    Matriz2D& operator=(const Matriz2D& other) {
+        if (this == &other) return *this;
+        if (filas * columnas != other.filas * other.columnas) {
+            delete[] datos;
+            filas = other.filas;
+            columnas = other.columnas;
+            datos = new float[filas * columnas];
+        }
+        memcpy(datos, other.datos, filas * columnas * sizeof(float));
+        return *this;
+    }
+
 
     void Random() {
         srand(time(NULL));
@@ -124,6 +135,22 @@ public:
         for (int i = 0; i < filas * columnas; i++) {
             datos[i] = fmaxf(0.0f, datos[i]);
         }
+    }
+    Matriz2D MultiplicarCPU(const Matriz2D& B) const {
+        if (columnas != B.filas) {
+            throw std::runtime_error("Dimensiones incompatibles en MultiplicarCPU");
+        }
+        Matriz2D C(filas, B.columnas);
+        for (int i = 0; i < filas; i++) {
+            for (int j = 0; j < B.columnas; j++) {
+                float suma = 0.0f;
+                for (int k = 0; k < columnas; k++) {
+                    suma += (*this)(i, k) * B(k, j);
+                }
+                C(i, j) = suma;
+            }
+        }
+        return C;
     }
 
     void SoftmaxFilas() {
