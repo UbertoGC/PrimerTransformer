@@ -16,6 +16,7 @@ public:
     void ReSize(int);
     double& operator[](int);
     Vector2D& operator<<(const Vector2D&);
+    
     Vector2D& operator+=(const Vector2D&);
     ~Vector2D();
 };
