@@ -1,0 +1,6 @@
+Texto,Longitud,Tiempo_GPU(ms),Tiempo_CPU(ms),Speedup,Tokens_por_segundo_GPU,Tokens_por_segundo_CPU
+"Transformers son modelos poderosos",34,52.5365,385.536,7.33845,171.309,23.3441
+"La inteligencia artificial está revolucionando el mundo",56,54.6262,640.298,11.7214,274.594,23.4266
+"GPT es un modelo de lenguaje avanzado",37,54.1824,605.163,11.169,258.386,23.1343
+"La atención multi-cabeza es clave en los transformers",54,60.8959,800.401,13.1438,312.008,23.7381
+"CUDA acelera el procesamiento de modelos profundos",50,56.6774,708.716,12.5044,299.943,23.987

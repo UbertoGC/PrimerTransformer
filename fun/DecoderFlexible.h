@@ -24,17 +24,17 @@ private:
     }
 
 public:
-    DecoderFlexible(int num_bloques = 2, int num_cabezas = 4, int d_ff = 128);
+    DecoderFlexible(int num_bloques = 2, int num_cabezas = 4, int d_ff = 128,int d_model = 32);
     void Ejecutar(std::string& texto, Matriz2D& salida, bool usarCUDA = false);
     ~DecoderFlexible();
 };
 
 // Implementación
-DecoderFlexible::DecoderFlexible(int num_bloques, int num_cabezas, int d_ff) 
-    : num_cabezas(num_cabezas), d_ff(d_ff) {
+DecoderFlexible::DecoderFlexible(int num_bloques, int num_cabezas, int d_ff, int d_model) 
+    : num_cabezas(num_cabezas), d_ff(d_ff), d_model(d_model) {
     
     std::cout << "=== Creando DecoderFlexible ===\n";
-    tokenizador = new CapaTokenizacion(1024); // Tamaño de vocabulario arbitrario
+    tokenizador = new CapaTokenizacion(d_model); // Tamaño de vocabulario arbitrario
     bloques.resize(num_bloques, nullptr);
     std::cout << "Configurado para " << num_bloques << " bloques\n";
 }
