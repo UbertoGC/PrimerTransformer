@@ -15,6 +15,7 @@ private:
     std::unordered_map<std::string, int> tokenizador;
     std::unordered_map<std::string, std::unordered_map<std::string, int>> fusiones;
 public:
+
     CapaTokenizacion(int);
     void Forward(std::string &, Matriz2D&);
     void BytePairEncoding(std::vector<std::string> &);
@@ -22,6 +23,7 @@ public:
     void DividirString(std::string &, std::vector<std::string> &);
     int VocabSize();
     ~CapaTokenizacion();
+    
 };
 CapaTokenizacion::CapaTokenizacion(int d_modelo){
     char m = 92;
