@@ -131,7 +131,20 @@ public:
     // =====================
     // Funciones CPU
     // =====================
-    
+    void Inicializar(int filas, int columnas) {
+        this->filas = filas;
+        this->columnas = columnas;
+
+        if (datos != nullptr) {
+            delete[] datos;
+        }
+
+        datos = new float[filas * columnas];
+        for (int i = 0; i < filas * columnas; i++) {
+            datos[i] = 0.0f;
+        }
+    }
+
     Matriz2D Transpuesta() const {
         Matriz2D T(columnas, filas); // Invertimos dimensiones
         for (int i = 0; i < filas; i++) {

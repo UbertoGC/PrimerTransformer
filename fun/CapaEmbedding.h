@@ -13,6 +13,7 @@ public:
     CapaEmbedding(int max_entrada, int d_m);
     void Forward(Matriz2D& entrada, Matriz2D& salida, bool usarCUDA = false);
     ~CapaEmbedding();
+     int GetMaxLen() const { return posicion_embedding.fil(); }
 };
 
 CapaEmbedding::CapaEmbedding(int max_entrada, int d_m) {

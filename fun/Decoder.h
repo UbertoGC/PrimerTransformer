@@ -58,7 +58,7 @@ Decoder::Decoder() {
     tokenizador = new CapaTokenizacion(d_modelo);
     embedding = new CapaEmbedding(max_secuencia_size, d_modelo);
 
-    bloques = new BloqueTransformer*[num_bloques];
+    bloques = new BloqueTransformer*[num_bloques]();
     for (int i = 0; i < num_bloques; i++) {
         std::cout << "Inicializando bloque " << i+1 << "..." << std::endl;
         //bloques[i] = new BloqueTransformer(); // usa el constructor por defecto
@@ -66,13 +66,18 @@ Decoder::Decoder() {
 
     }
 
-    salida_bloques = new Matriz2D[num_bloques];
+    salida_bloques = new Matriz2D[num_bloques]();
+    std::cout << "Decoder creado con " << num_bloques << " bloques." << std::endl;
+
+    
+
 }
 
 // Ejecutar pipeline
 void Decoder::Ejecutar(std::string& texto, bool usarCUDA) {
     entrada = texto;
-
+    
+    
     // 1. Tokenización
     tokenizador->Forward(entrada, salida_tokenizador);
     std::cout << "Tokenizador size: [" << salida_tokenizador.fil() << " x " << salida_tokenizador.col() << "]" << std::endl;
@@ -82,6 +87,7 @@ void Decoder::Ejecutar(std::string& texto, bool usarCUDA) {
     std::cout << "Embedding size: [" << salida_embedding.fil() << " x " << salida_embedding.col() << "]" << std::endl;
 
     // 3. Pasar por los bloques
+    
     bloques[0]->Forward(salida_embedding, salida_bloques[0], usarCUDA);
     std::cout << "Bloque 1 size: [" << salida_bloques[0].fil() << " x " << salida_bloques[0].col() << "]" << std::endl;
 
