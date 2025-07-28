@@ -36,6 +36,8 @@ __global__ void matMulKernel(const float* A, const float* B, float* C,
 
     if (row < filasA && col < colsB)
         C[row * colsB + col] = val;
+    
+        
 }
 
 // ============================================
@@ -135,6 +137,12 @@ void Matriz2D::RELU_CUDA() {
     int threads = 256;
     int blocks = (size + threads - 1) / threads;
     reluKernel<<<blocks, threads>>>(d_data, size);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA Error: " << cudaGetErrorString(err) << std::endl;
+        exit(1);
+    }
+
     CUDA_CHECK(cudaDeviceSynchronize());
 
     CUDA_CHECK(cudaMemcpy(datos, d_data, size * sizeof(float), cudaMemcpyDeviceToHost));
@@ -150,6 +158,11 @@ void Matriz2D::SoftmaxFilas_CUDA() {
     int threads = 256;
     size_t shared_mem = threads * sizeof(float);
     softmaxKernel<<<filas, threads, shared_mem>>>(d_data, filas, columnas);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA Error: " << cudaGetErrorString(err) << std::endl;
+        exit(1);
+    }
     CUDA_CHECK(cudaDeviceSynchronize());
 
     CUDA_CHECK(cudaMemcpy(datos, d_data, size * sizeof(float), cudaMemcpyDeviceToHost));
@@ -179,6 +192,11 @@ Matriz2D Matriz2D::MultiplicarCUDA(const Matriz2D& B) const {
                 (filas + BLOCK_SIZE - 1) / BLOCK_SIZE);
 
     matMulKernel<<<blocks, threads>>>(d_A, d_B, d_C, filas, columnas, B.columnas);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA Error: " << cudaGetErrorString(err) << std::endl;
+        exit(1);
+    }
     CUDA_CHECK(cudaDeviceSynchronize());
 
     CUDA_CHECK(cudaMemcpy(R.datos, d_C, sizeC, cudaMemcpyDeviceToHost));
@@ -189,17 +207,174 @@ Matriz2D Matriz2D::MultiplicarCUDA(const Matriz2D& B) const {
 
     return R;
 }
+__global__ void normalizeKernelGammaBeta(float* A, const float* gamma, const float* beta,
+                                          int rows, int cols, float epsilon) {
+    int row = blockIdx.x;
+    if (row >= rows) return;
 
-void Matriz2D::NormalizarFilas_CUDA() {
-    size_t size = filas * columnas;
-    float *d_data;
+    extern __shared__ float shared[];
+    float* sum = shared;
+    float* sumSq = shared + 1;
+
+    if (threadIdx.x == 0) {
+        *sum = 0.0f;
+        *sumSq = 0.0f;
+    }
+    __syncthreads();
+
+    // Calcular suma y suma de cuadrados
+    for (int j = threadIdx.x; j < cols; j += blockDim.x) {
+        float val = A[row * cols + j];
+        atomicAdd(sum, val);
+        atomicAdd(sumSq, val * val);
+    }
+    __syncthreads();
+
+    float mean = *sum / cols;
+    float var = (*sumSq / cols) - (mean * mean);
+    float invStd = rsqrtf(var + epsilon);
+
+    // Normalización + γ y β
+    for (int j = threadIdx.x; j < cols; j += blockDim.x) {
+        int idx = row * cols + j;
+        float normVal = (A[idx] - mean) * invStd;
+        A[idx] = normVal * gamma[j] + beta[j];
+    }
+}
+
+void Matriz2D::NormalizarFilas_CUDA(const Matriz2D& gamma, const Matriz2D& beta) {
+    if (gamma.fil() != 1 || beta.fil() != 1 || gamma.col() != columnas || beta.col() != columnas) {
+        throw std::runtime_error("Dimensiones de gamma/beta no compatibles con NormalizarFilas_CUDA");
+    }
+
+    int size = filas * columnas;
+    float *d_data, *d_gamma, *d_beta;
+
     CUDA_CHECK(cudaMalloc(&d_data, size * sizeof(float)));
-    CUDA_CHECK(cudaMemcpy(d_data, datos, size * sizeof(float), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMalloc(&d_gamma, columnas * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_beta, columnas * sizeof(float)));
 
-    size_t shared_mem = 2 * sizeof(float);
-    normalizeKernel<<<filas, columnas, shared_mem>>>(d_data, filas, columnas);
+    CUDA_CHECK(cudaMemcpy(d_data, datos, size * sizeof(float), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_gamma, gamma.Datos(), columnas * sizeof(float), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_beta, beta.Datos(), columnas * sizeof(float), cudaMemcpyHostToDevice));
+
+    int threads = 256;
+    size_t shared_mem = 2 * sizeof(float); // sum y sumSq
+    normalizeKernelGammaBeta<<<filas, threads, shared_mem>>>(d_data, d_gamma, d_beta, filas, columnas, 1e-6f);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA Error: " << cudaGetErrorString(err) << std::endl;
+        exit(1);
+    }
     CUDA_CHECK(cudaDeviceSynchronize());
 
     CUDA_CHECK(cudaMemcpy(datos, d_data, size * sizeof(float), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaFree(d_data));
+
+    cudaFree(d_data);
+    cudaFree(d_gamma);
+    cudaFree(d_beta);
+}
+
+
+__global__ void KernelSumarFila(float* datos, const float* bias, int filas, int columnas) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < filas * columnas) {
+        int col = idx % columnas;
+        datos[idx] += bias[col];
+    }
+}
+__global__ void KernelSumarMatrices(float* A, const float* B, int total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) {
+        A[idx] += B[idx];
+    }
+}
+
+
+void Matriz2D::SumarFilaCUDA(const Matriz2D& fila) {
+    if (fila.fil() != 1 && fila.fil() != filas) {
+        std::cerr << "Error: La matriz no es compatible para broadcast en GPU." << std::endl;
+        return;
+    }
+
+    int size = filas * columnas;
+    int threads = 256;
+    int blocks = (size + threads - 1) / threads;
+
+    float* d_datos;
+    float* d_bias;
+    CUDA_CHECK(cudaMalloc(&d_datos, size * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_bias, columnas * sizeof(float)));
+
+    CUDA_CHECK(cudaMemcpy(d_datos, datos, size * sizeof(float), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_bias, fila.Datos(), columnas * sizeof(float), cudaMemcpyHostToDevice));
+
+    KernelSumarFila<<<blocks, threads>>>(d_datos, d_bias, filas, columnas);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA Error: " << cudaGetErrorString(err) << std::endl;
+        exit(1);
+    }
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    CUDA_CHECK(cudaMemcpy(datos, d_datos, size * sizeof(float), cudaMemcpyDeviceToHost));
+    cudaFree(d_datos);
+    cudaFree(d_bias);
+}
+void Matriz2D::SumarMatrizCUDA(const Matriz2D& otra) {
+    if (filas != otra.Filas() || columnas != otra.Columnas()) {
+        throw std::runtime_error("Dimensiones incompatibles en SumarMatrizCUDA");
+    }
+
+    int total = filas * columnas;
+    float *d_A, *d_B;
+
+    CUDA_CHECK(cudaMalloc(&d_A, total * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_B, total * sizeof(float)));
+
+    CUDA_CHECK(cudaMemcpy(d_A, datos, total * sizeof(float), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_B, otra.Datos(), total * sizeof(float), cudaMemcpyHostToDevice));
+
+    int threads = 256;
+    int blocks = (total + threads - 1) / threads;
+
+    KernelSumarMatrices<<<blocks, threads>>>(d_A, d_B, total);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA Error: " << cudaGetErrorString(err) << std::endl;
+        exit(1);
+    }
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    CUDA_CHECK(cudaMemcpy(datos, d_A, total * sizeof(float), cudaMemcpyDeviceToHost));
+
+    cudaFree(d_A);
+    cudaFree(d_B);
+}
+
+__global__ void KernelEscalar(float* datos, float escalar, int total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) {
+        datos[idx] *= escalar;
+    }
+}
+
+void Matriz2D::EscalarCUDA(float escalar) {
+    int total = filas * columnas;
+    float* d_datos;
+    cudaMalloc(&d_datos, total * sizeof(float));
+    cudaMemcpy(d_datos, datos, total * sizeof(float), cudaMemcpyHostToDevice);
+
+    int threads = 256;
+    int blocks = (total + threads - 1) / threads;
+    KernelEscalar<<<blocks, threads>>>(d_datos, escalar, total);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA Error: " << cudaGetErrorString(err) << std::endl;
+        exit(1);
+    }
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(datos, d_datos, total * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaFree(d_datos);
 }
