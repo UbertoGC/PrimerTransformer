@@ -14,7 +14,7 @@ void benchmarkEjecucion(DecoderFlexible& decoder,  std::string& texto, bool usar
     auto fin = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duracion = fin - inicio;
     
-    std::cout << "\n⏱️  Tiempo " << (usarCUDA ? "GPU (CUDA)" : "CPU") 
+    std::cout << "\n  Tiempo " << (usarCUDA ? "GPU (CUDA)" : "CPU") 
               << ": " << std::fixed << std::setprecision(4) 
               << duracion.count() << " segundos\n";
     
@@ -22,12 +22,12 @@ void benchmarkEjecucion(DecoderFlexible& decoder,  std::string& texto, bool usar
     size_t num_tokens = salida.fil();
     double tokens_por_segundo = num_tokens / duracion.count();
     
-    std::cout << "🚀 Rendimiento: " << std::setprecision(2) 
+    std::cout << " Rendimiento: " << std::setprecision(2) 
               << tokens_por_segundo << " tokens/segundo\n";
 }
 
 int main() {
-    // Configuración
+    // Configuración inicial
     const int num_pruebas = 3;
     std::string textos[num_pruebas] = {
         "Transformers son modelos poderosos",
@@ -41,7 +41,7 @@ int main() {
     std::cout << "Pruebas con textos de diferente longitud:\n";
     
     for (int i = 0; i < num_pruebas; ++i) {
-        std::cout << "\n🔍 Prueba " << i+1 << "/" << num_pruebas 
+        std::cout << "\n Prueba " << i+1 << "/" << num_pruebas 
                   << " - Longitud: " << textos[i].length() << " caracteres\n";
         
         // Ejecutar en GPU
@@ -66,7 +66,7 @@ int main() {
         double tiempo_cpu = std::chrono::duration<double>(fin_cpu - inicio_cpu).count();
         double speedup = tiempo_cpu / tiempo_gpu;
         
-        std::cout << "⚡ Speedup GPU vs CPU: " << std::setprecision(2) 
+        std::cout << " Speedup GPU vs CPU: " << std::setprecision(2) 
                   << speedup << "x\n";
         
         std::cout << "----------------------------------------\n";

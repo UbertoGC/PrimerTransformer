@@ -1,0 +1,17 @@
+d_model,Texto,Longitud,Tiempo_GPU(ms),Tiempo_CPU(ms),Speedup,Tokens/s_GPU,Tokens/s_CPU
+32,"Transformers son modelos poderosos",34,47.1807,3.148,0.0667222,190.756,2858.96
+32,"La inteligencia artificial está revolucionando el mundo",56,48.6224,4.1343,0.0850287,308.5,3628.18
+64,"Transformers son modelos poderosos",34,46.7975,4.5166,0.0965137,192.318,1992.65
+64,"La inteligencia artificial está revolucionando el mundo",56,45.3249,6.5163,0.143769,330.944,2301.92
+128,"Transformers son modelos poderosos",34,49.48,9.0458,0.182817,181.892,994.937
+128,"La inteligencia artificial está revolucionando el mundo",56,45.5778,14.086,0.309054,329.108,1064.89
+256,"Transformers son modelos poderosos",34,47.0188,24.7189,0.525724,191.413,364.094
+256,"La inteligencia artificial está revolucionando el mundo",56,46.4348,42.0252,0.905037,323.034,356.929
+512,"Transformers son modelos poderosos",34,48.1274,85.7695,1.78213,187.004,104.932
+512,"La inteligencia artificial está revolucionando el mundo",56,48.8818,143.207,2.92965,306.863,104.744
+1024,"Transformers son modelos poderosos",34,56.6268,360.731,6.37032,158.935,24.9493
+1024,"La inteligencia artificial está revolucionando el mundo",56,61.0508,568.884,9.31821,245.697,26.3674
+2048,"Transformers son modelos poderosos",34,80.7991,1777.07,21.9937,111.387,5.06451
+2048,"La inteligencia artificial está revolucionando el mundo",56,195.121,2793.38,14.3161,76.8752,5.36985
+4096,"Transformers son modelos poderosos",34,160.476,15920.3,99.2068,56.0831,0.565315
+4096,"La inteligencia artificial está revolucionando el mundo",56,395.316,25946.9,65.6359,37.9443,0.578103
